@@ -1,13 +1,13 @@
 [Activity]
 name = Turtle Flags
 activity_version = 192
-license = MIT;LGPLv2+;LGPLv2.1+;LGPLv3+;GPLv2+;GPLv3+
+license = MIT;LGPLv2+;LGPLv2.1+;LGPLv3+;GPLv2+;GPLv3+;BSD
 bundle_id = org.laptop.TurtleFlags
 exec = sugar-activity TurtleArtActivity.TurtleArtActivity
 icon = activity-turtleart
 show_launcher = yes
 url = https://help.sugarlabs.org/en/turtleflags.html
 mime_types = application/x-turtle-art;application/vnd.turtleblocks
-summary = Use the turtle to draw country flags
+summary = Use the turtle to draw country flags.
 repository = https://github.com/sugarlabs/activity-turtle-flags
 tags = Programming;Game
