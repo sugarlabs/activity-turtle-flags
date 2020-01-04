@@ -51,9 +51,9 @@ class Camera():
 
     def _on_message(self, bus, message):
         ''' We get a message if a pixbuf is available '''
-        if message.structure is not None:
-            if message.structure.get_name() == 'pixbuf':
-                self.pixbuf = message.structure['pixbuf']
+        if message.get_structure is not None:
+            if message.get_structure.get_name() == 'pixbuf':
+                self.pixbuf = message.get_structure['pixbuf']
                 self.image_ready = True
 
     def start_camera_input(self):
