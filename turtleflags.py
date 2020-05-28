@@ -32,16 +32,16 @@ import sys
 import os
 import os.path
 import glob
-import cStringIO
+import io
 import errno
-import ConfigParser
+import configparser
 import gconf
 
 try:
     # Try to use XDG Base Directory standard for config files.
     import xdg.BaseDirectory
     CONFIG_HOME = os.path.join(xdg.BaseDirectory.xdg_config_home, 'turtleart')
-except ImportError, e:
+except ImportError as e:
     # Default to `.config` per the spec.
     CONFIG_HOME = os.path.expanduser(os.path.join('~', '.config', 'turtleart'))
 
@@ -77,7 +77,7 @@ class TurtleMain():
         self._execdirname = self._get_execution_dir()
         if self._execdirname is not None:
             os.chdir(self._execdirname)
-        file_activity_info = ConfigParser.ConfigParser()
+        file_activity_info = configparser.ConfigParser()
         activity_info_path = os.path.abspath('./activity/activity.info')
         file_activity_info.read(activity_info_path)
         bundle_id = file_activity_info.get('Activity', 'bundle_id')
@@ -152,10 +152,10 @@ class TurtleMain():
 return %s(self)" % (p, P, P)
             plugin = {}
             try:
-                exec f in globals(), plugin
-                self._gnome_plugins.append(plugin.values()[0](self))
-            except ImportError, e:
-                print 'failed to import %s: %s' % (P, str(e))
+                exec(f, globals(), plugin)
+                self._gnome_plugins.append(list(plugin.values())[0](self))
+            except ImportError as e:
+                print('failed to import %s: %s' % (P, str(e)))
 
     def _run_gnome_plugins(self):
         ''' Tell the plugin about the TurtleWindow instance. '''
@@ -166,7 +166,7 @@ return %s(self)" % (p, P, P)
         '''Create a directory in a fashion similar to `mkdir -p`.'''
         try:
             os.makedirs(path)
-        except OSError, exc:
+        except OSError as exc:
             if exc.errno == errno.EEXIST:
                 pass
             else:
@@ -266,14 +266,14 @@ return %s(self)" % (p, P, P)
         try:
             opts, args = getopt.getopt(argv[1:], 'hor',
                                        ['help', 'output_png', 'run'])
-        except getopt.GetoptError, err:
-            print str(err)
-            print self._HELP_MSG
+        except getopt.GetoptError as err:
+            print(str(err))
+            print(self._HELP_MSG)
             sys.exit(2)
         self._run_on_launch = False
         for o, a in opts:
             if o in ('-h', '--help'):
-                print self._HELP_MSG
+                print(self._HELP_MSG)
                 sys.exit()
             if o in ('-o', '--output_png'):
                 self._output_png = True
@@ -285,7 +285,7 @@ return %s(self)" % (p, P, P)
             self._ta_file = args[0]
 
         if len(args) > 1 or self._output_png and self._ta_file is None:
-            print self._HELP_MSG
+            print(self._HELP_MSG)
             sys.exit()
 
         if self._ta_file is not None:
@@ -301,8 +301,8 @@ return %s(self)" % (p, P, P)
         ''' Make sure Sugar paths are present. '''
         tapath = os.path.join(os.environ['HOME'], '.sugar', 'default',
                               'org.laptop.TurtleArtActivity')
-        map(self._makepath, (os.path.join(tapath, 'data/'),
-                             os.path.join(tapath, 'instance/')))
+        list(map(self._makepath, (os.path.join(tapath, 'data/'),
+                             os.path.join(tapath, 'instance/'))))
 
     def _read_initial_pos(self):
         ''' Read saved configuration. '''
@@ -315,12 +315,12 @@ return %s(self)" % (p, P, P)
                 self._mkdir_p(CONFIG_HOME)
                 data_file = open(os.path.join(CONFIG_HOME, 'turtleartrc'),
                                  'a+')
-            except IOError, e:
+            except IOError as e:
                 # We can't write to the configuration file, use
                 # a faux file that will persist for the length of
                 # the session.
-                print _('Configuration directory not writable: %s') % (e)
-            data_file = cStringIO.StringIO()
+                print(_('Configuration directory not writable: %s') % (e))
+            data_file = io.StringIO()
             data_file.write(str(50) + '\n')
             data_file.write(str(50) + '\n')
             data_file.write(str(800) + '\n')
@@ -550,7 +550,7 @@ Would you like to save before quitting?'))
         save_type = '.lg'
         filename, self.tw.load_save_folder = get_save_name(
             save_type, self.tw.load_save_folder, 'logosession')
-        if isinstance(filename, unicode):
+        if isinstance(filename, str):
             filename = filename.encode('utf-8')
         if filename is not None:
             f = file(filename, 'w')

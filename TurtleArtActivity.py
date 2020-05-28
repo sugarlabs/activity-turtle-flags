@@ -56,7 +56,7 @@ import os
 import glob
 import tarfile
 import subprocess
-import ConfigParser
+import configparser
 import shutil
 import tempfile
 try:
@@ -90,7 +90,7 @@ class TurtleArtActivity(activity.Activity):
         ''' Set up the toolbars, canvas, sharing, etc. '''
         try:
             super(TurtleArtActivity, self).__init__(handle)
-        except dbus.exceptions.DBusException, e:
+        except dbus.exceptions.DBusException as e:
             _logger.error(str(e))
 
         self.tw = None
@@ -598,7 +598,7 @@ class TurtleArtActivity(activity.Activity):
             f = file(tmpfile, 'w')
             f.write(code)
             f.close()
-        except Exception, e:
+        except Exception as e:
             _logger.error("Couldn't save Logo code: " + str(e))
             tmpfile = None
         return tmpfile
@@ -609,7 +609,7 @@ class TurtleArtActivity(activity.Activity):
         tmpfile = os.path.join(datapath, 'tmpfile.ta')
         try:
             data_to_file(self.tw.assemble_data_to_save(), tmpfile)
-        except Exception, e:
+        except Exception as e:
             _logger.error("Couldn't save project code: " + str(e))
             tmpfile = None
         return tmpfile
@@ -1279,7 +1279,7 @@ class TurtleArtActivity(activity.Activity):
         ''' Load a plugin from the Journal and initialize it '''
         plugin_path = os.path.join(tmp_dir, 'plugin.info')
         _logger.debug(plugin_path)
-        file_info = ConfigParser.ConfigParser()
+        file_info = configparser.ConfigParser()
         if len(file_info.read(plugin_path)) == 0:
             _logger.debug('Required file plugin.info could not be found.')
             self.tw.showlabel('status',
