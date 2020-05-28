@@ -78,7 +78,7 @@ from TurtleArt.tawindow import TurtleArtWindow
 from TurtleArt.tacollaboration import Collaboration
 
 if HAS_TOOLBARBOX:
-    from util.helpbutton import (HelpButton, add_section, add_paragraph)
+    from TurtleArt.util.helpbutton import (HelpButton, add_section, add_paragraph)
 
 
 class TurtleArtActivity(activity.Activity):

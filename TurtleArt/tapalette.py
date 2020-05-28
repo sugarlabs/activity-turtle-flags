@@ -1,27 +1,28 @@
-#!/usr/bin/env python
-#Copyright (c) 2011-13 Walter Bender
+#!/usr/bin/env python3
+# Copyright (c) 2011-13 Walter Bender
 
-#Permission is hereby granted, free of charge, to any person obtaining a copy
-#of this software and associated documentation files (the "Software"), to deal
-#in the Software without restriction, including without limitation the rights
-#to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-#copies of the Software, and to permit persons to whom the Software is
-#furnished to do so, subject to the following conditions:
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
 
-#The above copyright notice and this permission notice shall be included in
-#all copies or substantial portions of the Software.
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
 
-#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-#IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-#FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-#AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-#LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-#OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-#THE SOFTWARE.
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
 
 help_palettes = {}
 help_windows = {}
 palette_names = []
+palettes = {}
 palette_i18n_names = []
 palette_init_on_start = []
 palette_blocks = []
@@ -49,12 +50,14 @@ block_styles = {'basic-style': [],
                 'basic-style-1arg': [],
                 'basic-style-2arg': [],
                 'basic-style-3arg': [],
+                'basic-style-7arg': [],
                 'basic-style-var-arg': [],
                 'bullet-style': [],
                 'box-style': [],
                 'box-style-media': [],
                 'number-style': [],
                 'number-style-var-arg': [],
+                'number-style-var-3arg': [],
                 'number-style-block': [],
                 'number-style-porch': [],
                 'number-style-1arg': [],
@@ -70,7 +73,10 @@ block_styles = {'basic-style': [],
                 'clamp-style-collapsible': [],
                 'clamp-style-collapsed': [],
                 'clamp-style-1arg': [],
+                'clamp-style-hat-1arg': [],
+                'clamp-style-hat': [],
                 'clamp-style-boolean': [],
+                'clamp-style-until': [],
                 'clamp-style-else': [],
                 'portfolio-style-2x2': [],
                 'portfolio-style-1x1': [],
@@ -78,19 +84,19 @@ block_styles = {'basic-style': [],
                 'portfolio-style-1x2': []}
 
 
-import gtk
+from gi.repository import Gtk
+from gi.repository import Gdk
 
 try:
-    from sugar.graphics import style
-    from util.helpbutton import (add_section, add_paragraph)
+    from sugar3.graphics import style
+    from .util.helpbutton import (add_section, add_paragraph)
     GRID_CELL_SIZE = style.GRID_CELL_SIZE
     HELP_PALETTE = True
 except ImportError:
     GRID_CELL_SIZE = 55
     HELP_PALETTE = False
 
-from taconstants import (EXPANDABLE_STYLE, EXPANDABLE_FLOW)
-from tautils import debug_output
+from .taconstants import (EXPANDABLE_STYLE, EXPANDABLE_FLOW)
 
 from gettext import gettext as _
 
@@ -100,25 +106,26 @@ help_strings = {
 
 
 class Palette():
+
     """ a class for defining new palettes """
 
     def __init__(self, name, colors=["#00FF00", "#00A000"], position=None):
         self._name = name
         self._special_name = _(name)
         self._colors = colors
-        self._max_text_width = int(gtk.gdk.screen_width() / 3) - 20
+        self._max_text_width = int(Gdk.Screen.width() / 3) - 20
 
         # Prepare a vbox for the help palette
-        if not self._name in help_palettes:
-            self._help_box = gtk.VBox()
+        if self._name not in help_palettes:
+            self._help_box = Gtk.VBox()
             self._help_box.set_homogeneous(False)
             help_palettes[self._name] = self._help_box
-            help_windows[self._name] = gtk.ScrolledWindow()
+            help_windows[self._name] = Gtk.ScrolledWindow()
             help_windows[self._name].set_size_request(
-                int(gtk.gdk.screen_width() / 3),
-                gtk.gdk.screen_height() - GRID_CELL_SIZE * 3)
+                int(Gdk.Screen.width() / 3),
+                Gdk.Screen.height() - GRID_CELL_SIZE * 3)
             help_windows[self._name].set_policy(
-                gtk.POLICY_NEVER, gtk.POLICY_AUTOMATIC)
+                Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
             help_windows[self._name].add_with_viewport(
                 help_palettes[self._name])
             help_palettes[self._name].show()
@@ -129,7 +136,7 @@ class Palette():
 
     def add_palette(self, position=None, init_on_start=False):
         if self._name is None:
-            print 'You must specify a name for your palette'
+            print('You must specify a name for your palette')
             return
 
         # Insert new palette just before the trash
@@ -144,12 +151,13 @@ class Palette():
             i = position
 
         if self._name not in palette_names:
+            palettes[self._name] = self
             palette_names.insert(i, self._name)
             palette_i18n_names.insert(i, _(self._name))
             palette_blocks.insert(i, [])
             block_colors.insert(i, self._colors)
             if init_on_start:
-                if not self._name in palette_init_on_start:
+                if self._name not in palette_init_on_start:
                     palette_init_on_start.append(self._name)
         else:
             return
@@ -175,9 +183,10 @@ class Palette():
                   special_name=None, default=None, prim_name=None,
                   help_string=None, value_block=False, content_block=False,
                   logo_command=None, hidden=False, colors=None,
-                  string_or_number=False):
+                  string_or_number=False, before=None, after=None,
+                  private=None):
         """ Add a new block to the palette """
-        block = Block(block_name)
+        block = _ProtoBlock(block_name)
         block.set_style(style)
         if label is not None:
             block.set_label(label)
@@ -215,6 +224,12 @@ class Palette():
             block.set_colors(colors)
         if string_or_number:
             block.set_string_or_number()
+        if before is not None:
+            block.before = before
+        if after is not None:
+            block.after = after
+        if private is not None:
+            block.private = private
         block.set_value_block(value_block)
         block.set_content_block(content_block)
         block.set_palette(self._name)
@@ -224,16 +239,19 @@ class Palette():
 
 
 def make_palette(palette_name, colors=None, help_string=None, position=None,
-                 init_on_start=False):
+                 init_on_start=False, translation=None):
     """ Palette helper function """
-    if colors is None:
-        palette = Palette(palette_name)
+    if palette_name in palettes:
+        return palettes[palette_name]
     else:
-        palette = Palette(palette_name, colors)
-    if help_string is not None:
-        palette.set_help(help_string)
-    palette.add_palette(position, init_on_start=init_on_start)
-    return palette
+        if colors is None:
+            palette = Palette(palette_name)
+        else:
+            palette = Palette(palette_name, colors)
+        if help_string is not None:
+            palette.set_help(help_string)
+        palette.add_palette(position, init_on_start=init_on_start)
+        return palette
 
 
 def palette_name_to_index(palette_name):
@@ -252,7 +270,8 @@ def define_logo_function(key, value):
     logo_functions[key] = value
 
 
-class Block():
+class _ProtoBlock():
+
     """ a class for defining new block primitives """
 
     def __init__(self, name):
@@ -273,7 +292,7 @@ class Block():
 
     def add_block(self, position=None):
         if self._name is None:
-            print 'You must specify a name for your block'
+            print('You must specify a name for your block')
             return
 
         # FIXME: Does the block already exist? A block can live on
@@ -282,14 +301,17 @@ class Block():
         # all lists except palettes before regeneration.
 
         if self._style is None:
-            print 'You must specify a style for your block'
+            print('You must specify a style for your block')
             return
         else:
             block_styles[self._style].append(self._name)
         if self._style in ['clamp-style',
+                           'clamp-style-hat-1arg',
+                           'clamp-style-hat',
                            'clamp-style-collapsible',
                            'clamp-style-1arg',
                            'clamp-style-boolean',
+                           'clamp-style-until',
                            'clamp-style-else']:
             EXPANDABLE_FLOW.append(self._name)
 
@@ -299,8 +321,8 @@ class Block():
         if self._palette is not None:
             i = palette_names.index(self._palette)
             if self._name in palette_blocks[i]:
-                print '%s already in palette %s, skipping...' % \
-                    (self._name, self._palette)
+                print('%s already in palette %s, skipping...' %
+                      (self._name, self._palette))
             else:
                 if position is not None and isinstance(position, int) and \
                         position < len(palette_blocks[i]):
@@ -308,7 +330,7 @@ class Block():
                 else:
                     palette_blocks[i].append(self._name)
                     if position is not None:
-                        print 'Ignoring position (%s)' % (str(position))
+                        print('Ignoring position (%s)' % (str(position)))
 
         if self._help is not None:
             help_strings[self._name] = self._help
@@ -361,8 +383,8 @@ class Block():
         self._content_block = value
 
     def set_palette(self, palette):
-        if not palette in palette_names:
-            print 'Could not find palette %s' % (palette)
+        if palette not in palette_names:
+            print('Could not find palette %s' % (palette))
         else:
             self._palette = palette
 
@@ -386,7 +408,7 @@ class Block():
 
     def set_style(self, style):
         if style not in block_styles:
-            print 'Unknown style: %s' % (style)
+            print('Unknown style: %s' % (style))
         else:
             self._style = style
 

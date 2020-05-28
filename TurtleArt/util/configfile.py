@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # Copyright (c) 2011 Collabora Ltd. <http://www.collabora.co.uk/>
 # This library is free software; you can redistribute it and/or
@@ -16,21 +16,21 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-import gobject
+from gi.repository import GObject
 
 
-class ConfigFile(gobject.GObject):
+class ConfigFile(GObject.GObject):
     """Load/save a simple (key = value) config file"""
 
     __gsignals__ = {
-        'configuration-loaded': (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE,
+        'configuration-loaded': (GObject.SignalFlags.RUN_FIRST, None,
                                  ()),
-        'configuration-saved': (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE,
+        'configuration-saved': (GObject.SignalFlags.RUN_FIRST, None,
                                 ()),
     }
 
     def __init__(self, config_file_path, valid_keys={}):
-        gobject.GObject.__init__(self)
+        GObject.GObject.__init__(self)
 
         self._config_file_path = config_file_path
         self._valid_keys = valid_keys
@@ -44,7 +44,7 @@ class ConfigFile(gobject.GObject):
         return self._is_loaded
 
     def get(self, key, empty_if_not_loaded=False):
-        if not key in self._valid_keys:
+        if key not in self._valid_keys:
             raise RuntimeError("Unknown config value %s" % key)
 
         if key in self._config_hash:
@@ -60,7 +60,7 @@ class ConfigFile(gobject.GObject):
         return value
 
     def set(self, key, value):
-        if not key in self._valid_keys:
+        if key not in self._valid_keys:
             raise RuntimeError("Unknown config value %s" % key)
 
         self._config_hash[key] = value
@@ -75,7 +75,7 @@ class ConfigFile(gobject.GObject):
                 k, v = line.split('=')
                 k = k.strip(' ')
                 v = v.strip(' ')
-                if not k in self._valid_keys:
+                if k not in self._valid_keys:
                     raise RuntimeError("Unknown config value %s" % k)
                 value_type = self._valid_keys[k]["type"]
                 if value_type == "text":
@@ -87,26 +87,26 @@ class ConfigFile(gobject.GObject):
                 self._config_hash[k] = value
             self._is_loaded = True
             self.emit('configuration-loaded')
-        except Exception, e:
-            print e
+        except Exception as e:
+            print(e)
 
         return self._is_loaded
 
     def save(self):
         config_file = open(self._config_file_path, 'w')
-        for k in self._config_hash.keys():
+        for k in list(self._config_hash.keys()):
             v = self._config_hash[k]
-            l = "%s = %s\n" % (k, v)
-            config_file.write(l)
+            ls = "%s = %s\n" % (k, v)
+            config_file.write(ls)
         config_file.close()
         self.emit('configuration-saved')
 
     def dump_keys(self):
-        print "\n\nDumping keys\n\n"
-        for k in self._config_hash.keys():
+        print("\n\nDumping keys\n\n")
+        for k in list(self._config_hash.keys()):
             v = self._config_hash[k]
-            l = "%s = %s\n" % (k, v)
-            print l
+            ls = "%s = %s\n" % (k, v)
+            print(ls)
 
 
 def test_save_load(test_config_file):
@@ -136,12 +136,12 @@ def test_save_load(test_config_file):
 
 
 def _configuration_saved_cb(config_file_obj):
-    print "_configuration_saved_cb called"
+    print("_configuration_saved_cb called")
     config_file_obj.dump_keys()
 
 
 def _configuration_loaded_cb(config_file_obj):
-    print "_configuration_loaded_cb called"
+    print("_configuration_loaded_cb called")
     config_file_obj.dump_keys()
 
 
