@@ -1,4 +1,4 @@
-#Copyright (c) 2011 Walter Bender
+# Copyright (c) 2011 Walter Bender
 
 # This procedure is invoked when the user-definable block on the
 # "extras" palette is selected.
@@ -15,18 +15,27 @@ def myblock(tw, sound):
 
     from TurtleArt.tautils import get_path
     import os
+    import tempfile
 
     dirs = [os.path.join(
-            os.environ['HOME'],
-            'Activities/TamTamMini.activity/common/Resources/Sounds/')]
+        os.environ['HOME'],
+        'Activities/TamTamMini.activity/common/Resources/Sounds/'),
+        os.path.join(
+        os.environ['HOME'],
+        'Activities/TamTamJam.activity/common/Resources/Sounds/'),
+        os.path.join(
+        os.environ['HOME'],
+        'Activities/TamTamEdit.activity/common/Resources/Sounds/')]
     orchlines = []
     scorelines = []
     instrlist = []
 
     def finddir():
+        print(dirs)
         for d in dirs:
             if os.path.isdir(d):
                 return d
+        return '.'
 
     def playSine(pitch=1000, amplitude=5000, duration=1, starttime=0,
                  pitch_envelope='default', amplitude_envelope='default'):
@@ -46,7 +55,7 @@ def myblock(tw, sound):
         else:
             ampenv = amplitude_envelope
 
-        if not 1 in instrlist:
+        if 1 not in instrlist:
             orchlines.append("instr 1\n")
             orchlines.append("kpitenv oscil 1, 1/p3, p6\n")
             orchlines.append("aenv oscil 1, 1/p3, p7\n")
@@ -85,7 +94,7 @@ def myblock(tw, sound):
         else:
             ampenv = amplitude_envelope
 
-        if not 9 in instrlist:
+        if 9 not in instrlist:
             orchlines.append("instr 9\n")
             orchlines.append("kpitenv oscil 1, 1/p3, p8\n")
             orchlines.append("aenv oscil 1, 1/p3, p9\n")
@@ -128,21 +137,20 @@ def myblock(tw, sound):
         csd.write("\n</CsoundSynthesizer>")
         csd.close()
 
-    if type(sound) == float:
-        playSine(pitch=float(sound))
-    elif type(sound) == list:  # Create a score by computing a sinewave.
-        if len(sound) == 1:
+    if len(sound) == 1:
+        if isinstance(sound[0], float) or isinstance(sound[0], int):
             playSine(pitch=float(sound[0]))
-        elif len(sound) == 2:
+        else:  # Create a score from a prerecorded Wave file.
+            playWave(sound[0])
+    else:
+        if len(sound) == 2:
             playSine(pitch=float(sound[0]), amplitude=float(sound[1]))
         else:
             playSine(pitch=float(sound[0]), amplitude=float(sound[1]),
                      duration=float(sound[2]))
-    else:  # Create a score from a prerecorded Wave file.
-        playWave(sound)
     if tw.running_sugar:
         path = os.path.join(get_path(tw.activity, 'instance'), 'tmp.csd')
     else:
-        path = os.path.join('/tmp', 'tmp.csd')
+        path = os.path.join(tempfile.gettempdir(), 'tmp.csd')
     audioWrite(path)  # Create a csound file from the score.
     os.system('csound ' + path)  # Play the csound file.

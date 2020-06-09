@@ -21,7 +21,7 @@
 #     <http://www.gnu.org/licenses/>.
 
 
-def myblock(tw, text):
+def myblock(tw, args):
     ''' Dialog with AIML library: Usage: Load this code into a Python
         Block. Pass text as an argument and the robot's response will
         be pushed to the stack. Use a Pop Block to pop the response
@@ -59,8 +59,10 @@ def myblock(tw, text):
                                       'master': 'The Sugar Community'}}}
 
     def get_mem_info(tag):
-        meminfo = file('/proc/meminfo').readlines()
-        return int([i for i in meminfo if i.startswith(tag)][0].split()[1])
+        meminfo = open('/proc/meminfo').readlines()
+        mem_list = int([i for i in meminfo if i.startswith(tag)][0].split()[1])
+        meminfo.close()
+        return mem_list
 
     # load Standard AIML set for restricted systems
     if get_mem_info('MemTotal:') < 524288:
@@ -99,11 +101,12 @@ Close other activities and try once more.'))
             return kernel
 
         kernel.loadBrain(brain['brain'])
-        for name, value in brain['predicates'].items():
+        for name, value in list(brain['predicates'].items()):
             kernel.setBotPredicate(name, value)
 
         return kernel
 
+    text = args[0]
     if not hasattr(tw, 'aiml_kernel'):
         tw.aiml_kernel = brain_load(tw, get_default_voice())
     response_text = brain_respond(tw.aiml_kernel, text)

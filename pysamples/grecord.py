@@ -1,5 +1,5 @@
-#Copyright (c) 2008, Media Modifications Ltd.
-#Copyright (c) 2011, Walter Bender
+# Copyright (c) 2008, Media Modifications Ltd.
+# Copyright (c) 2011, Walter Bender
 
 # This procedure is invoked when the user-definable block on the
 # "extras" palette is selected.
@@ -8,23 +8,24 @@
 # it 'start' to start recording; 'stop' to stop recording; 'play' to
 # play back your recording; or 'save' to save your recording to the
 # Sugar Journal.
+from gi.repository import GObject
+from gi.repository import Gst
 
 
-def myblock(tw, arg):
+def myblock(tw, args):
     ''' Record and playback a sound (Sugar only) '''
     import os
-    import gst
-    import gobject
-    gobject.threads_init()
+    GObject.threads_init()
 
     from TurtleArt.tautils import get_path
     from TurtleArt.tagplay import play_audio_from_file
-    from sugar.datastore import datastore
-    from sugar import profile
+    from sugar3.datastore import datastore
+    from sugar3 import profile
 
     from gettext import gettext as _
 
     class Grecord:
+
         ''' A class for creating a gstreamer session for recording audio. '''
 
         def __init__(self, tw):
@@ -41,7 +42,7 @@ def myblock(tw, arg):
             self._audio_transcode_handler = None
             self._transcode_id = None
 
-            self._pipeline = gst.Pipeline("Record")
+            self._pipeline = Gst.Pipeline("Record")
             self._create_audiobin()
             self._pipeline.add(self._audiobin)
 
@@ -51,50 +52,43 @@ def myblock(tw, arg):
 
         def _create_audiobin(self):
             ''' Assemble all the pieces we need. '''
-            src = gst.element_factory_make("alsasrc", "absrc")
+            src = Gst.ElementFactory.make("alsasrc", "absrc")
 
             # attempt to use direct access to the 0,0 device, solving
             # some A/V sync issues
             src.set_property("device", "plughw:0,0")
-            hwdev_available = src.set_state(gst.STATE_PAUSED) != \
-                gst.STATE_CHANGE_FAILURE
-            src.set_state(gst.STATE_NULL)
+            hwdev_available = src.set_state(Gst.State.PAUSED) != \
+                Gst.StateChangeReturn.FAILURE
+            src.set_state(Gst.State.NULL)
             if not hwdev_available:
                 src.set_property("device", "default")
 
-            srccaps = gst.Caps(
+            srccaps = Gst.Caps(
                 "audio/x-raw-int,rate=16000,channels=1,depth=16")
 
             # guarantee perfect stream, important for A/V sync
-            rate = gst.element_factory_make("audiorate")
+            rate = Gst.ElementFactory.make("audiorate")
 
             # without a buffer here, gstreamer struggles at the start
             # of the recording and then the A/V sync is bad for the
             # whole video (possibly a gstreamer/ALSA bug -- even if it
             # gets caught up, it should be able to resync without
             # problem)
-            queue = gst.element_factory_make("queue", "audioqueue")
+            queue = Gst.ElementFactory.make("queue", "audioqueue")
             queue.set_property("leaky", True)  # prefer fresh data
             queue.set_property("max-size-time", 5000000000)  # 5 seconds
             queue.set_property("max-size-buffers", 500)
-            queue.connect("overrun", self._log_queue_overrun)
 
-            enc = gst.element_factory_make("wavenc", "abenc")
+            enc = Gst.ElementFactory.make("wavenc", "abenc")
 
-            sink = gst.element_factory_make("filesink", "absink")
+            sink = Gst.ElementFactory.make("filesink", "absink")
             sink.set_property("location", self.capture_file)
 
-            self._audiobin = gst.Bin("audiobin")
+            self._audiobin = Gst.Bin("audiobin")
             self._audiobin.add(src, rate, queue, enc, sink)
 
             src.link(rate, srccaps)
-            gst.element_link_many(rate, queue, enc, sink)
-
-        def _log_queue_overrun(self, queue):
-            ''' We use a buffer, which may overflow. '''
-            cbuffers = queue.get_property("current-level-buffers")
-            cbytes = queue.get_property("current-level-bytes")
-            ctime = queue.get_property("current-level-time")
+            Gst.element_link_many(rate, queue, enc, sink)
 
         def is_recording(self):
             ''' Are we recording? '''
@@ -106,15 +100,15 @@ def myblock(tw, arg):
 
         def start_recording_audio(self):
             ''' Start the stream in order to start recording. '''
-            if self._get_state() == gst.STATE_PLAYING:
+            if self._get_state() == Gst.State.PLAYING:
                 return
-            self._pipeline.set_state(gst.STATE_PLAYING)
+            self._pipeline.set_state(Gst.State.PLAYING)
             self._recording = True
 
         def stop_recording_audio(self):
             ''' Stop recording and then convert the results into a
             .ogg file using a new stream. '''
-            self._pipeline.set_state(gst.STATE_NULL)
+            self._pipeline.set_state(Gst.State.NULL)
             self._recording = False
 
             if not os.path.exists(self.capture_file) or \
@@ -129,7 +123,7 @@ def myblock(tw, arg):
                 ' name=audioFilesrc ! wavparse name=audioWavparse \
 ! audioconvert name=audioAudioconvert ! vorbisenc name=audioVorbisenc \
 ! oggmux name=audioOggmux ! filesink name=audioFilesink'
-            audioline = gst.parse_launch(line)
+            audioline = Gst.parse_launch(line)
 
             # vorbis_enc = audioline.get_by_name('audioVorbisenc')
 
@@ -140,42 +134,42 @@ def myblock(tw, arg):
             audioBus.add_signal_watch()
             self._audio_transcode_handler = audioBus.connect(
                 'message', self._onMuxedAudioMessageCb, audioline)
-            self._transcode_id = gobject.timeout_add(
+            self._transcode_id = GObject.timeout_add(
                 200, self._transcodeUpdateCb, audioline)
-            audioline.set_state(gst.STATE_PLAYING)
+            audioline.set_state(Gst.State.PLAYING)
 
         def _transcodeUpdateCb(self, pipe):
             ''' Where are we in the transcoding process? '''
             position, duration = self._query_position(pipe)
-            if position != gst.CLOCK_TIME_NONE:
+            if position != Gst.CLOCK_TIME_NONE:
                 value = position * 100.0 / duration
-                value = value/100.0
+                value = value / 100.0
             return True
 
         def _query_position(self, pipe):
             ''' Where are we in the stream? '''
             try:
-                position, format = pipe.query_position(gst.FORMAT_TIME)
-            except:
-                position = gst.CLOCK_TIME_NONE
+                position, format = pipe.query_position(Gst.Format.TIME)
+            except BaseException:
+                position = Gst.CLOCK_TIME_NONE
 
             try:
-                duration, format = pipe.query_duration(gst.FORMAT_TIME)
-            except:
-                duration = gst.CLOCK_TIME_NONE
+                duration, format = pipe.query_duration(Gst.Format.TIME)
+            except BaseException:
+                duration = Gst.CLOCK_TIME_NONE
 
             return (position, duration)
 
         def _onMuxedAudioMessageCb(self, bus, message, pipe):
             ''' Clean up at end of stream.'''
-            if message.type != gst.MESSAGE_EOS:
+            if message.type != Gst.MessageType.EOS:
                 return True
 
-            gobject.source_remove(self._audio_transcode_handler)
+            GObject.source_remove(self._audio_transcode_handler)
             self._audio_transcode_handler = None
-            gobject.source_remove(self._transcode_id)
+            GObject.source_remove(self._transcode_id)
             self._transcode_id = None
-            pipe.set_state(gst.STATE_NULL)
+            pipe.set_state(Gst.State.NULL)
             pipe.get_bus().remove_signal_watch()
             pipe.get_bus().disable_sync_message_emission()
 
@@ -185,12 +179,12 @@ def myblock(tw, arg):
         def _bus_message_handler(self, bus, message):
             ''' Handle any messages associated with the stream. '''
             t = message.type
-            if t == gst.MESSAGE_EOS:
+            if t == Gst.MessageType.EOS:
                 if self._eos_cb:
                     cb = self._eos_cb
                     self._eos_cb = None
                     cb()
-            elif t == gst.MESSAGE_ERROR:
+            elif t == Gst.MessageType.ERROR:
                 # TODO: if we come out of suspend/resume with errors, then
                 # get us back up and running...  TODO: handle "No space
                 # left on the resource.gstfilesink.c" err, debug =
@@ -204,12 +198,9 @@ def myblock(tw, arg):
 
     # Sometime we need to parse multiple arguments, e.g., save, savename
     save_name = '%s_%s' % (tw.activity.name, _('sound'))
-    if isinstance(arg, list):
-        cmd = arg[0].lower()
-        if len(arg) > 1:
-            save_name = str(arg[1])
-    else:
-        cmd = arg.lower()
+    cmd = args[0].lower()
+    if len(args) > 1:
+        save_name = str(args[1])
 
     if cmd == 'start' or cmd == _('start').lower():
         tw.grecord.start_recording_audio()
