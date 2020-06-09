@@ -1,39 +1,38 @@
-#!/usr/bin/env python
-#Copyright (c) 2011 Walter Bender
-#Copyright (c) 2011 Collabora Ltd. <http://www.collabora.co.uk/>
+#!/usr/bin/env python3
+# Copyright (c) 2011 Walter Bender
+# Copyright (c) 2011 Collabora Ltd. <http://www.collabora.co.uk/>
 
-#Permission is hereby granted, free of charge, to any person obtaining a copy
-#of this software and associated documentation files (the "Software"), to deal
-#in the Software without restriction, including without limitation the rights
-#to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-#copies of the Software, and to permit persons to whom the Software is
-#furnished to do so, subject to the following conditions:
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
 
-#The above copyright notice and this permission notice shall be included in
-#all copies or substantial portions of the Software.
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
 
-#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-#IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-#FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-#AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-#LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-#OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-#THE SOFTWARE.
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
 
 import sys
+
 sys.path.append("..")
 import os.path
 
 import dbus
 from gettext import gettext as _
-import gobject
-import gtk
 
-from plugin import Plugin
+from .plugin import Plugin
 
-from util.menubuilder import MenuBuilder
-from util.configfile import ConfigFile
-from util.configwizard import ConfigWizard
+from TurtleArt.util.menubuilder import make_menu_item, make_sub_menu
+from TurtleArt.util.configfile import ConfigFile
+from TurtleArt.util.configwizard import ConfigWizard
 
 from collaboration.neighborhood import get_neighborhood
 from collaboration.connectionmanager import get_connection_manager
@@ -44,16 +43,18 @@ from TurtleArt.tacollaboration import Collaboration
 
 import traceback
 
+from gi.repository import Gtk
+from gi.repository import GObject
+
 CONNECTION_INTERFACE_ACTIVITY_PROPERTIES = \
     'org.laptop.Telepathy.ActivityProperties'
 
 
 class Collaboration_plugin(Plugin):
-
     __gsignals__ = {
-        'joined': (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE,
+        'joined': (GObject.SignalFlags.RUN_FIRST, None,
                    ()),
-        'shared': (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE,
+        'shared': (GObject.SignalFlags.RUN_FIRST, None,
                    ()), }
 
     def __init__(self, parent):
@@ -67,6 +68,9 @@ class Collaboration_plugin(Plugin):
         self._activity_id = "1234567"
         self._nick = ""
         self._setup_has_been_called = False
+        # FIXME To fix attribution errors, had to add variable declaration
+        self.shared_activity = None
+        self.metadata = None
 
     def _setup_config_file(self, config_file_path):
         self._config_file_path = os.path.join(config_file_path,
@@ -106,26 +110,26 @@ class Collaboration_plugin(Plugin):
         self._setup_config_file(self._parent.get_config_home())
 
     def get_menu(self):
-        menu = gtk.Menu()
+        menu = Gtk.Menu()
 
-        MenuBuilder.make_menu_item(menu, _('Enable collaboration'),
-                                   self._connect_cb)
+        make_menu_item(menu, _('Enable collaboration'),
+                       self._connect_cb)
 
-        self._activities_submenu = gtk.Menu()
-        activities_menu = MenuBuilder.make_sub_menu(self._activities_submenu,
-                                                    _('Activities'))
+        self._activities_submenu = Gtk.Menu()
+        activities_menu = make_sub_menu(self._activities_submenu,
+                                        _('Activities'))
         menu.append(activities_menu)
 
-        self._buddies_submenu = gtk.Menu()
-        buddies_menu = MenuBuilder.make_sub_menu(self._buddies_submenu,
-                                                 _('Buddies'))
+        self._buddies_submenu = Gtk.Menu()
+        buddies_menu = make_sub_menu(self._buddies_submenu,
+                                     _('Buddies'))
         menu.append(buddies_menu)
 
-        MenuBuilder.make_menu_item(menu, _('Share'), self._share_cb)
-        MenuBuilder.make_menu_item(menu, _('Configuration'),
-                                   self._config_neighborhood_cb)
+        make_menu_item(menu, _('Share'), self._share_cb)
+        make_menu_item(menu, _('Configuration'),
+                       self._config_neighborhood_cb)
 
-        neighborhood_menu = MenuBuilder.make_sub_menu(menu, _('Neighborhood'))
+        neighborhood_menu = make_sub_menu(menu, _('Neighborhood'))
 
         return neighborhood_menu
 
@@ -196,8 +200,8 @@ class Collaboration_plugin(Plugin):
     def _activity_removed_cb(self, model, activity_model):
         try:
             self._activities.pop(activity_model.props.name)
-        except:
-            print 'Failed to remove activity %s' % activity_model.props.name
+        except BaseException:
+            print('Failed to remove activity %s' % activity_model.props.name)
 
         self._recreate_available_activities_menu()
 
@@ -208,8 +212,8 @@ class Collaboration_plugin(Plugin):
     def _buddy_removed_cb(self, activity, buddy):
         try:
             self._buddies.pop(buddy.get_key())
-        except:
-            print "Couldn't remove buddy %s" % buddy.get_key()
+        except BaseException:
+            print("Couldn't remove buddy %s" % buddy.get_key())
         self._recreate_available_buddies_menu()
 
     # TODO: we should have a list of available actions over
@@ -220,16 +224,16 @@ class Collaboration_plugin(Plugin):
         for child in self._buddies_submenu.get_children():
             self._buddies_submenu.remove(child)
 
-        for buddy in self._buddies.values():
+        for buddy in list(self._buddies.values()):
             key = buddy.get_key()
             if key is None:
                 key = ''
             n = buddy.get_nick() + '|' + key[0:15]
-            MenuBuilder.make_menu_item(self._buddies_submenu, n,
-                                       self._buddy_actions_cb, buddy)
+            make_menu_item(self._buddies_submenu, n,
+                           self._buddy_actions_cb, buddy)
 
     def _buddy_actions_cb(self, widget, buddy):
-        print 'do something with %s' % buddy.get_nick()
+        print('do something with %s' % buddy.get_nick())
 
     # TODO:
     #     we need an extra menu branch with a) 'Join' button b) List of buddies
@@ -237,13 +241,13 @@ class Collaboration_plugin(Plugin):
         for child in self._activities_submenu.get_children():
             self._activities_submenu.remove(child)
 
-        for activity in self._activities.values():
+        for activity in list(self._activities.values()):
             n = activity.props.name
-            MenuBuilder.make_menu_item(self._activities_submenu, n,
-                                       self._join_activity_cb, activity)
+            make_menu_item(self._activities_submenu, n,
+                           self._join_activity_cb, activity)
 
     def _join_activity_cb(self, widget, activity):
-        print 'Lets try to join...'
+        print('Lets try to join...')
 
         connection_manager = get_connection_manager()
         account_path, connection = \
@@ -255,7 +259,7 @@ class Collaboration_plugin(Plugin):
         properties = {}
         properties['id'] = activity.activity_id
         properties['color'] = activity.get_color()
-        print 'room handle according to activity %s' % activity.room_handle
+        print('room handle according to activity %s' % activity.room_handle)
         properties['private'] = True
 
         try:
@@ -266,8 +270,8 @@ class Collaboration_plugin(Plugin):
             self._joined_activity = Activity(
                 account_path, connection, room_handle, properties=properties)
             # FIXME: this should be unified, no need to keep 2 references
-            self._shared_activity = self._joined_activity
-        except:
+            self.shared_activity = self._joined_activity
+        except BaseException:
             traceback.print_exc(file=sys.stdout)
 
         if self._joined_activity.props.joined:
@@ -278,7 +282,7 @@ class Collaboration_plugin(Plugin):
         self._joined_activity.join()
 
     def __joined_cb(self, activity, success, err):
-        print "We've joined an activity"
+        print("We've joined an activity")
         self.emit('joined')
 
     def _config_neighborhood_cb(self, widget):
@@ -323,12 +327,12 @@ class Collaboration_plugin(Plugin):
             return
 
         try:
-            self._parent._shared_activity = Activity(account_path,
-                                                     connection,
-                                                     properties=properties)
+            self._parent.shared_activity = Activity(account_path,
+                                                    connection,
+                                                    properties=properties)
             # FIXME: this should be unified, no need to keep 2 references
-            self._shared_activity = self._parent._shared_activity
-        except:
+            self.shared_activity = self._parent.shared_activity
+        except BaseException:
             traceback.print_exc(file=sys.stdout)
 
         if self._parent._shared_parent.props.joined:
@@ -344,7 +348,8 @@ class Collaboration_plugin(Plugin):
 
     def __share_activity_error_cb(self, activity, error):
         """Notify with GObject event of unsuccessful sharing of activity"""
-        print '%s got error: %s' % (activity, error)
+        print('%s got error: %s' % (activity, error))
+
 
 if __name__ == '__main__':
-    print 'testing collaboration'
+    print('testing collaboration')
