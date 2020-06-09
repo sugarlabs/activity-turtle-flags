@@ -31,7 +31,7 @@ import os.path
 import sys
 
 import cairo
-import gconf
+from gi.repository import Gio
 from gi.repository import GLib
 from gi.repository import Gdk
 from gi.repository import GdkPixbuf
@@ -52,7 +52,7 @@ import gettext
 
 from TurtleArt.taconstants import (OVERLAY_LAYER, DEFAULT_TURTLE_COLORS,
                                    TAB_LAYER, SUFFIX)
-from TurtleArt.tautils import (data_from_string, get_save_name)
+from TurtleArt.tautils import (data_from_string, get_save_name, get_path)
 from TurtleArt.tapalette import default_values
 from TurtleArt.tawindow import TurtleArtWindow
 from TurtleArt.taexportlogo import save_logo
@@ -67,11 +67,13 @@ class TurtleMain():
         '/usr/local/share/sugar/activities/TurtleArt.activity'
     _ICON_SUBPATH = 'images/turtle.png'
     _GNOME_PLUGIN_SUBPATH = 'gnome_plugins'
-    _HOVER_HELP = '/desktop/sugar/activities/turtleart/hoverhelp'
-    _COORDINATE_SCALE = '/desktop/sugar/activities/turtleart/coordinatescale'
+    _HOVER_HELP = 'hover-help'
+    _COORDINATE_SCALE = 'coordinate-scale'
+    _GIO_SETTINGS = 'org.laptop.TurtleArtActivity'
+
 
     def __init__(self):
-        self._setting_gconf_overrides = False
+        self._gio_settings_overrides = False
         self._abspath = os.path.abspath('.')
         self._execdirname = self._get_execution_dir()
         if self._execdirname is not None:
@@ -113,14 +115,37 @@ class TurtleMain():
         else:
             self._read_initial_pos()
             self._init_gnome_plugins()
-            self._get_gconf_settings()
+            self._get_gio_settings()
             self._setup_gtk()
             self._build_window()
             self._run_gnome_plugins()
             self._start_gtk()
 
-    def _get_gconf_settings(self):
-        self.client = gconf.client_get_default()
+    def _get_local_settings(self, activity_root):
+        """ return an activity-specific Gio.Settings
+        """
+        # create schemas directory if missing
+        path = os.path.join(get_path(None, 'data'), 'schemas')
+        if not os.access(path, os.F_OK):
+            os.makedirs(path)
+
+        # create compiled schema file if missing
+        compiled = os.path.join(path, 'gschemas.compiled')
+        if not os.access(compiled, os.R_OK):
+            src = '%s.gschema.xml' % self._GIO_SETTINGS
+            lines = open(os.path.join(activity_root, src), 'r').readlines()
+            open(os.path.join(path, src), 'w').writelines(lines)
+            os.system('glib-compile-schemas %s' % path)
+            os.remove(os.path.join(path, src))
+
+        # create a local Gio.Settings based on the compiled schema
+        source = Gio.SettingsSchemaSource.new_from_directory(path, None, True)
+        schema = source.lookup(self._GIO_SETTINGS, True)
+        _settings = Gio.Settings.new_full(schema, None, None)
+        return _settings
+
+    def _get_gio_settings(self):
+        self._settings = self._get_local_settings(self._execdirname)
 
     def get_config_home(self):
         return CONFIG_HOME
@@ -190,7 +215,7 @@ return %s(self)" % (p, P, P)
         else:
             self.win.get_window().set_cursor(Gdk.Cursor.new(Gdk.CursorType.WATCH))
             GLib.idle_add(self._project_loader, self._ta_file)
-        self._set_gconf_overrides()
+        self._set_gio_settings_overrides()
         Gtk.main()
 
     def _project_loader(self, file_name):
@@ -230,24 +255,24 @@ return %s(self)" % (p, P, P)
                                   activity=self, running_sugar=False)
         self.tw.save_folder = self._abspath  # os.path.expanduser('~')
 
-        if hasattr(self, 'client'):
-            if self.client.get_int(self._HOVER_HELP) == 1:
+        if hasattr(self, '_settings'):
+            if self._settings.get_int(self._HOVER_HELP) == 1:
                 self.hover.set_active(False)
                 self._do_hover_help_off_cb(None)
-            if not self.client.get_int(self._COORDINATE_SCALE) in [0, 1]:
-                self.tw.coord_scale = 1
+            if not self._settings.get_int(self._COORDINATE_SCALE) in [0, 1]:
+                    self.tw.coord_scale = 1
             else:
                 self.tw.coord_scale = 0
 
-    def _set_gconf_overrides(self):
+    def _set_gio_settings_overrides(self):
         if self.tw.coord_scale == 0:
             self.tw.coord_scale = 1
         else:
             self._do_rescale_cb(None)
         if self.tw.coord_scale != 1:
-            self._setting_gconf_overrides = True
+            self._gio_setting_overrides = True
             self.coords.set_active(True)
-            self._setting_gconf_overrides = False
+            self._gio_setting_overrides = False
 
     def _init_vars(self):
         ''' If we are invoked to start a project from Gnome, we should make
@@ -574,7 +599,7 @@ Would you like to save before quitting?'))
 
     def _do_rescale_cb(self, button):
         ''' Callback to rescale coordinate space. '''
-        if self._setting_gconf_overrides:
+        if self._gio_settings_overrides:
             return
         if self.tw.coord_scale == 1:
             self.tw.coord_scale = self.tw.height / 40
@@ -598,7 +623,9 @@ Would you like to save before quitting?'))
             default_values['arc'] = [90, 100]
             default_values['setpensize'] = [5]
             self.tw.turtles.get_active_turtle().set_pen_size(5)
-        self.client.set_int(self._COORDINATE_SCALE, int(self.tw.coord_scale))
+        if hasattr(self, '_settings'):
+            self._settings.set_int(self._COORDINATE_SCALE,
+                                   int(self.tw.coord_scale))
 
     def _do_toggle_hover_help_cb(self, button):
         ''' Toggle hover help on/off '''
@@ -612,8 +639,8 @@ Would you like to save before quitting?'))
         ''' Turn hover help on '''
         self.tw.no_help = False
         self.hover.set_active(True)
-        if hasattr(self, 'client'):
-            self.client.set_int(self._HOVER_HELP, 0)
+        if hasattr(self, '_settings'):
+            self._settings.set_int(self._HOVER_HELP, 0)
 
     def _do_hover_help_off_cb(self, button):
         ''' Turn hover help off '''
@@ -624,8 +651,8 @@ Would you like to save before quitting?'))
         if self.tw.status_spr is not None:
             self.tw.status_spr.hide()
         self.hover.set_active(False)
-        if hasattr(self, 'client'):
-            self.client.set_int(self._HOVER_HELP, 1)
+        if hasattr(self, '_settings'):
+            self._settings.set_int(self._HOVER_HELP, 1)
 
     def _do_palette_cb(self, widget):
         ''' Callback to show/hide palette of blocks. '''
