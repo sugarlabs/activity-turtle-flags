@@ -22,20 +22,20 @@
 #THE SOFTWARE.
 
 
-from gi.repository import Gtk
-from gi.repository import Gdk
-from gi.repository import GdkPixbuf
-from gi.repository import GLib
-import cairo
-
+import configparser
+import errno
 import getopt
-import sys
+import io
 import os
 import os.path
-import io
-import errno
-import configparser
+import sys
+
+import cairo
 import gconf
+from gi.repository import GLib
+from gi.repository import Gdk
+from gi.repository import GdkPixbuf
+from gi.repository import Gtk
 
 try:
     # Try to use XDG Base Directory standard for config files.
@@ -49,7 +49,6 @@ argv = sys.argv[:]  # Workaround for import behavior of gst in tagplay
 sys.argv[1:] = []  # Execution of import gst cannot see '--help' or '-h'
 
 import gettext
-from gettext import gettext as _
 
 from TurtleArt.taconstants import (OVERLAY_LAYER, DEFAULT_TURTLE_COLORS,
                                    TAB_LAYER, SUFFIX)

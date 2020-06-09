@@ -49,10 +49,6 @@ from sugar3.graphics import style
 from sugar3.graphics.icon import Icon
 from sugar3.graphics.xocolor import XoColor
 from sugar3.datastore import datastore
-from sugar3.graphics.combobox import ComboBox
-from sugar3.graphics.toolcombobox import ToolComboBox
-from sugar3.graphics.objectchooser import ObjectChooser
-from sugar3 import mime
 from sugar3 import profile
 
 import os
@@ -81,7 +77,7 @@ from TurtleArt.tawindow import TurtleArtWindow
 from TurtleArt.tacollaboration import Collaboration
 
 if HAS_TOOLBARBOX:
-    from TurtleArt.util.helpbutton import (HelpButton, add_section, add_paragraph)
+    from TurtleArt.util.helpbutton import (add_section, add_paragraph)
 
 
 class TurtleArtActivity(activity.Activity):
