@@ -425,7 +425,7 @@ return %s(self)" % (p, P, P)
         menubuilder.make_menu_item(menu, _('Stop'), self._do_stop_cb)
         turtle_menu = menubuilder.make_sub_menu(menu, _('Turtle'))
 
-        menu = gtk.Menu()
+        menu = Gtk.Menu()
         menubuilder.make_menu_item(menu, _('About...'), self._do_about_cb)
         help_menu = menubuilder.make_sub_menu(menu, _('Help'))
 
