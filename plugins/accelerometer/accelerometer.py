@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#Copyright (c) 2011 Walter Bender
+# Copyright (c) 2011 Walter Bender
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,8 +22,8 @@ from gettext import gettext as _
 from plugins.plugin import Plugin
 
 from TurtleArt.tapalette import make_palette
-from TurtleArt.talogo import primitive_dictionary
 from TurtleArt.tautils import debug_output
+from TurtleArt.taprimitive import Primitive
 
 import logging
 _logger = logging.getLogger('turtleart-activity accelerometer plugin')
@@ -35,6 +35,7 @@ ACCELEROMETER_DEVICE = '/sys/devices/platform/lis3lv02d/position'
 class Accelerometer(Plugin):
 
     def __init__(self, parent):
+        Plugin.__init__(self)
         self._parent = parent
         if os.path.exists(ACCELEROMETER_DEVICE):
             self._status = True
@@ -49,25 +50,25 @@ class Accelerometer(Plugin):
                                help_string=_('Palette of sensor blocks'),
                                position=6)
 
-        primitive_dictionary['xyz'] = self.prim_xyz
         if self._status:
             palette.add_block('xyz',
                               style='basic-style-extended-vertical',
                               label=_('acceleration'),
-                              help_string=\
-                                  _('push acceleration in x, y, z to heap'),
+                              help_string=_(
+                                  'push acceleration in x, y, z to heap'),
                               prim_name='xyz')
         else:
             palette.add_block('xyz',
                               style='basic-style-extended-vertical',
                               label=_('acceleration'),
-                              help_string=\
-                                  _('push acceleration in x, y, z to heap'),
+                              help_string=_(
+                                  'push acceleration in x, y, z to heap'),
                               hidden=True,
                               prim_name='xyz')
 
         self._parent.lc.def_prim(
-            'xyz', 0, lambda self: primitive_dictionary['xyz']())
+            'xyz', 0,
+            Primitive(self.prim_xyz))
 
     def _status_report(self):
         debug_output('Reporting accelerator status: %s' % (str(self._status)))

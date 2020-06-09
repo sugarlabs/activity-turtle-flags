@@ -1,19 +1,19 @@
-from device import RFIDDevice
-from serial import Serial
+from .device import RFIDDevice
+from .serial import Serial
 import dbus
 from dbus.mainloop.glib import DBusGMainLoop
 import gobject
-from time import sleep
-import utils
+from . import utils
 
 HAL_SERVICE = 'org.freedesktop.Hal'
 HAL_MGR_PATH = '/org/freedesktop/Hal/Manager'
 HAL_MGR_IFACE = 'org.freedesktop.Hal.Manager'
 HAL_DEV_IFACE = 'org.freedesktop.Hal.Device'
-REGEXP_SERUSB = '\/org\/freedesktop\/Hal\/devices\/usb_device['\
+REGEXP_SERUSB = '/org/freedesktop/Hal/devices/usb_device['\
                 'a-z,A-Z,0-9,_]*serial_usb_[0-9]'
 
 VERSIONS = ['301']
+
 
 class RFIDReader(RFIDDevice):
     """
@@ -32,8 +32,11 @@ class RFIDReader(RFIDDevice):
 
         loop = DBusGMainLoop()
         self.bus = dbus.SystemBus(mainloop=loop)
-        hmgr_iface = dbus.Interface(self.bus.get_object(HAL_SERVICE,
-                                    HAL_MGR_PATH), HAL_MGR_IFACE)
+        hmgr_iface = dbus.Interface(
+            self.bus.get_object(
+                HAL_SERVICE,
+                HAL_MGR_PATH),
+            HAL_MGR_IFACE)
 
         hmgr_iface.connect_to_signal('DeviceRemoved', self._device_removed_cb)
 
@@ -42,20 +45,28 @@ class RFIDReader(RFIDDevice):
         Checks if RFID-RW-USB device is present.
         Returns True if so, False otherwise.
         """
-        hmgr_if = dbus.Interface(self.bus.get_object(HAL_SERVICE, HAL_MGR_PATH),
-                                HAL_MGR_IFACE)
-        serialusb_devices = set(hmgr_if.FindDeviceStringMatch('serial.type',
-                            'usb')) & set(hmgr_if.FindDeviceStringMatch(
-                            'info.subsystem', 'tty'))
+        hmgr_if = dbus.Interface(
+            self.bus.get_object(
+                HAL_SERVICE,
+                HAL_MGR_PATH),
+            HAL_MGR_IFACE)
+        serialusb_devices = set(
+            hmgr_if.FindDeviceStringMatch(
+                'serial.type', 'usb')) & set(
+            hmgr_if.FindDeviceStringMatch(
+                'info.subsystem', 'tty'))
         for i in serialusb_devices:
-            serialusb_if = dbus.Interface(self.bus.get_object(HAL_SERVICE, i), 
-                                         HAL_DEV_IFACE)
+            serialusb_if = dbus.Interface(self.bus.get_object(HAL_SERVICE, i),
+                                          HAL_DEV_IFACE)
             if serialusb_if.PropertyExists('info.parent'):
                 parent_udi = str(serialusb_if.GetProperty('info.parent'))
-                parent = dbus.Interface(self.bus.get_object(HAL_SERVICE,
-                                        parent_udi), HAL_DEV_IFACE)
-                if parent.PropertyExists('info.linux.driver') and \
-                str(parent.GetProperty('info.linux.driver')) == 'ftdi_sio':
+                parent = dbus.Interface(
+                    self.bus.get_object(
+                        HAL_SERVICE,
+                        parent_udi),
+                    HAL_DEV_IFACE)
+                if parent.PropertyExists('info.linux.driver') and str(
+                        parent.GetProperty('info.linux.driver')) == 'ftdi_sio':
                     device = str(serialusb_if.GetProperty('linux.device_file'))
                     ser = Serial(device, 9600, timeout=0.1)
                     ser.read(100)
@@ -81,10 +92,10 @@ class RFIDReader(RFIDDevice):
                 self.ser = Serial(self.device, 9600, timeout=0.1)
                 self._connected = True
                 if self._select_animal_tag:
-                    #gobject.idle_add(self._loop)
+                    # gobject.idle_add(self._loop)
                     gobject.timeout_add(1000, self._loop)
                     retval = True
-            except:
+            except BaseException:
                 self._connected = False
         return retval
 
@@ -120,7 +131,7 @@ class RFIDReader(RFIDDevice):
         Sends the version command to the device and returns
         a string with the device version.
         """
-        #self.ser.flushInput()
+        # self.ser.flushInput()
         ver = "???"
         self.ser.read(100)
         self.ser.write('v')
@@ -143,7 +154,7 @@ class RFIDReader(RFIDDevice):
             self.ser.close()
             self._connected = False
             self.tags = []
-            self.emit("disconnected","RFID-RW-USB")
+            self.emit("disconnected", "RFID-RW-USB")
 
     def _loop(self):
         """
@@ -151,14 +162,14 @@ class RFIDReader(RFIDDevice):
         """
         if not self._connected:
             return False
-        
+
         self.ser.read(100)
         self.ser.write('r')
         self.ser.write('a')
         self.ser.write('t')
         self.ser.write('\x0d')
         resp = self.ser.read(33)[0:-1].split('_')
-        if resp.__len__() is not 6 or resp in self.tags:
+        if (resp.__len__() != 6) or resp in self.tags:
             return True
 
         self.tags.append(resp)
@@ -176,11 +187,11 @@ class RFIDReader(RFIDDevice):
         data = utils.bin2hex(tag_bin)
         self.emit("tag-read", data)
         self.last_tag = data
-        #sleep(1)
+        # sleep(1)
         return True
 
 # Testing
-#if __name__ == '__main__':
+# if __name__ == '__main__':
 #    def handler(device, idhex):
 #        """
 #        Handler for "tag-read" signal.

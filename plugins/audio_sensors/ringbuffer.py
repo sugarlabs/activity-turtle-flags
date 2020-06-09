@@ -81,7 +81,7 @@ class RingBuffer1d(object):
         Positive values will give the latest information, negative values will
         give the newest added information from the buffer. (in normal order)
         """
-        if number == None:
+        if number is None:
             number = len(self._data) // step
 
         number *= step
@@ -102,7 +102,7 @@ class RingBuffer1d(object):
             spam = ((self.offset + number) - self.offset - 1) % step
             return np.concatenate(
                 (self._data[self.offset:self.offset + number:step],
-                 self._data[spam:number -
-                            (len(self._data) - self.offset):step]))
+                 self._data[spam:number - (
+                     len(self._data) - self.offset):step]))
 
         return self._data[self.offset:self.offset + number:step].copy()
