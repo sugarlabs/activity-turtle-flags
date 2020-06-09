@@ -17,22 +17,24 @@
 
 import logging
 
-import gobject
-import gconf
 import dbus
-from telepathy.client import Connection
-from telepathy.interfaces import CONNECTION
+from gi.repository import TelepathyGLib
+from gi.repository.TelepathyGLib import Connection
 
-from xocolor import XoColor
-import connection_watcher
+# from telepathy.interfaces import CONNECTION
 
+CONNECTION = TelepathyGLib.IFACE_CONNECTION
+
+from .xocolor import XoColor
+from . import connection_watcher
+from gi.repository import GObject
 
 CONNECTION_INTERFACE_BUDDY_INFO = 'org.laptop.Telepathy.BuddyInfo'
 
 _owner_instance = None
 
 
-class BaseBuddyModel(gobject.GObject):
+class BaseBuddyModel(GObject.GObject):
     __gtype_name__ = 'SugarBaseBuddyModel'
 
     def __init__(self, **kwargs):
@@ -42,7 +44,7 @@ class BaseBuddyModel(gobject.GObject):
         self._tags = None
         self._current_activity = None
 
-        gobject.GObject.__init__(self, **kwargs)
+        GObject.GObject.__init__(self, **kwargs)
 
     def get_nick(self):
         return self._nick
@@ -50,7 +52,7 @@ class BaseBuddyModel(gobject.GObject):
     def set_nick(self, nick):
         self._nick = nick
 
-    nick = gobject.property(type=object, getter=get_nick, setter=set_nick)
+    nick = GObject.Property(type=object, getter=get_nick, setter=set_nick)
 
     def get_key(self):
         return self._key
@@ -58,7 +60,7 @@ class BaseBuddyModel(gobject.GObject):
     def set_key(self, key):
         self._key = key
 
-    key = gobject.property(type=object, getter=get_key, setter=set_key)
+    key = GObject.Property(type=object, getter=get_key, setter=set_key)
 
     def get_color(self):
         return self._color
@@ -66,12 +68,12 @@ class BaseBuddyModel(gobject.GObject):
     def set_color(self, color):
         self._color = color
 
-    color = gobject.property(type=object, getter=get_color, setter=set_color)
+    color = GObject.Property(type=object, getter=get_color, setter=set_color)
 
     def get_tags(self):
         return self._tags
 
-    tags = gobject.property(type=object, getter=get_tags)
+    tags = GObject.Property(type=object, getter=get_tags)
 
     def get_current_activity(self):
         return self._current_activity
@@ -81,7 +83,7 @@ class BaseBuddyModel(gobject.GObject):
             self._current_activity = current_activity
             self.notify('current-activity')
 
-    current_activity = gobject.property(type=object,
+    current_activity = GObject.Property(type=object,
                                         getter=get_current_activity,
                                         setter=set_current_activity)
 
@@ -95,13 +97,10 @@ class OwnerBuddyModel(BaseBuddyModel):
     def __init__(self):
         BaseBuddyModel.__init__(self)
 
-        #client = gconf.client_get_default()
-        #self.props.nick = client.get_string('/desktop/sugar/user/nick')
         self.props.nick = "rgs"
-        #color = client.get_string('/desktop/sugar/user/color')
         self.props.color = XoColor(None)
 
-        #self.props.key = get_profile().pubkey
+        # self.props.key = get_profile().pubkey
         self.props.key = "foobar"
 
         self.connect('notify::nick', self.__property_changed_cb)
@@ -111,17 +110,16 @@ class OwnerBuddyModel(BaseBuddyModel):
 
         bus = dbus.SessionBus()
         bus.add_signal_receiver(
-                self.__name_owner_changed_cb,
-                signal_name='NameOwnerChanged',
-                dbus_interface='org.freedesktop.DBus')
+            self.__name_owner_changed_cb,
+            signal_name='NameOwnerChanged',
+            dbus_interface='org.freedesktop.DBus')
 
         bus_object = bus.get_object(dbus.BUS_DAEMON_NAME, dbus.BUS_DAEMON_PATH)
         for service in bus_object.ListNames(
                 dbus_interface=dbus.BUS_DAEMON_IFACE):
             if service.startswith(CONNECTION + '.'):
-                path = '/%s' % service.replace('.', '/')
-                Connection(service, path, bus,
-                           ready_handler=self.__connection_ready_cb)
+                path = '/{}'.format(service.replace('.', '/'))
+                self._connection = Connection.new(bus_object, service, path)
 
     def __connection_ready_cb(self, connection):
         self._sync_properties_on_connection(connection)
@@ -196,7 +194,6 @@ class BuddyModel(BaseBuddyModel):
     __gtype_name__ = 'SugarBuddyModel'
 
     def __init__(self, **kwargs):
-
         self._account = None
         self._contact_id = None
         self._handle = None
@@ -212,7 +209,7 @@ class BuddyModel(BaseBuddyModel):
     def set_account(self, account):
         self._account = account
 
-    account = gobject.property(type=object, getter=get_account,
+    account = GObject.Property(type=object, getter=get_account,
                                setter=set_account)
 
     def get_contact_id(self):
@@ -221,7 +218,7 @@ class BuddyModel(BaseBuddyModel):
     def set_contact_id(self, contact_id):
         self._contact_id = contact_id
 
-    contact_id = gobject.property(type=object, getter=get_contact_id,
+    contact_id = GObject.Property(type=object, getter=get_contact_id,
                                   setter=set_contact_id)
 
     def get_handle(self):
@@ -230,5 +227,5 @@ class BuddyModel(BaseBuddyModel):
     def set_handle(self, handle):
         self._handle = handle
 
-    handle = gobject.property(type=object, getter=get_handle,
+    handle = GObject.Property(type=object, getter=get_handle,
                               setter=set_handle)

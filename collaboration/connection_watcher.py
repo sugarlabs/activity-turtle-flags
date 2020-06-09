@@ -21,27 +21,32 @@ import logging
 
 import dbus
 import dbus.mainloop.glib
-import gobject
+from gi.repository import TelepathyGLib
 
-from telepathy.client import Connection
-from telepathy.interfaces import CONN_INTERFACE
-from telepathy.constants import (CONNECTION_STATUS_CONNECTED,
-                                 CONNECTION_STATUS_DISCONNECTED)
+from gi.repository.TelepathyGLib import Connection
 
+CONN_INTERFACE = TelepathyGLib.IFACE_CONNECTION
+CONNECTION_STATUS_CONNECTED = TelepathyGLib.ConnectionStatus.CONNECTED
+CONNECTION_STATUS_DISCONNECTED = TelepathyGLib.ConnectionStatus.DISCONNECTED
+# from telepathy.interfaces import CONN_INTERFACE
+# from telepathy.constants import (CONNECTION_STATUS_CONNECTED,
+#                                 CONNECTION_STATUS_DISCONNECTED)
+
+from gi.repository import GObject
 
 _instance = None
 
 
-class ConnectionWatcher(gobject.GObject):
+class ConnectionWatcher(GObject.GObject):
     __gsignals__ = {
-        'connection-added': (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE,
-                             ([gobject.TYPE_PYOBJECT])),
-        'connection-removed': (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE,
-                               ([gobject.TYPE_PYOBJECT])),
+        'connection-added': (GObject.SignalFlags.RUN_FIRST, None,
+                             ([GObject.TYPE_PYOBJECT])),
+        'connection-removed': (GObject.SignalFlags.RUN_FIRST, None,
+                               ([GObject.TYPE_PYOBJECT])),
     }
 
     def __init__(self, bus=None):
-        gobject.GObject.__init__(self)
+        GObject.GObject.__init__(self)
 
         if bus is None:
             self.bus = dbus.Bus()
@@ -97,7 +102,7 @@ class ConnectionWatcher(gobject.GObject):
         self.emit('connection-removed', conn)
 
     def get_connections(self):
-        return self._connections.values()
+        return list(self._connections.values())
 
 
 def get_instance():
@@ -111,14 +116,14 @@ if __name__ == '__main__':
     dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 
     def connection_added_cb(conn_watcher, conn):
-        print 'new connection', conn.service_name
+        print('new connection', conn.service_name)
 
     def connection_removed_cb(conn_watcher, conn):
-        print 'removed connection', conn.service_name
+        print('removed connection', conn.service_name)
 
     watcher = ConnectionWatcher()
     watcher.connect('connection-added', connection_added_cb)
     watcher.connect('connection-removed', connection_removed_cb)
 
-    loop = gobject.MainLoop()
+    loop = GObject.MainLoop()
     loop.run()

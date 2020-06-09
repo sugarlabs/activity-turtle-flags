@@ -16,21 +16,27 @@
 # Boston, MA 02111-1307, USA.
 
 """
-UNSTABLE. It should really be internal to the sugar.presence package.
+UNSTABLE. It should really be internal to the sugar3.presence package.
 """
 
 from functools import partial
 
 import dbus
 from dbus import PROPERTIES_IFACE
-from telepathy.interfaces import (ACCOUNT, ACCOUNT_MANAGER)
-from telepathy.constants import CONNECTION_STATUS_CONNECTED
+
+from gi.repository import TelepathyGLib
+
+# from telepathy.interfaces import (ACCOUNT, ACCOUNT_MANAGER)
+ACCOUNT = TelepathyGLib.IFACE_ACCOUNT
+ACCOUNT_MANAGER = TelepathyGLib.IFACE_ACCOUNT_MANAGER
+CONNECTION_STATUS_CONNECTED = TelepathyGLib.ConnectionStatus.CONNECTED
 
 ACCOUNT_MANAGER_SERVICE = 'org.freedesktop.Telepathy.AccountManager'
 ACCOUNT_MANAGER_PATH = '/org/freedesktop/Telepathy/AccountManager'
 
 
 class Connection(object):
+
     def __init__(self, account_path, connection):
         self.account_path = account_path
         self.connection = connection
@@ -38,6 +44,7 @@ class Connection(object):
 
 
 class ConnectionManager(object):
+
     """Track available telepathy connections"""
 
     def __init__(self):
@@ -57,7 +64,7 @@ class ConnectionManager(object):
             if connection_path != '/':
                 try:
                     self._track_connection(account_path, connection_path)
-                except:
+                except BaseException:
                     pass
 
     def __account_property_changed_cb(self, account_path, properties):
@@ -94,7 +101,8 @@ class ConnectionManager(object):
 
     def get_preferred_connection(self):
         best_connection = None, None
-        for account_path, connection in self._connections_per_account.items():
+        for account_path, connection in list(
+                self._connections_per_account.items()):
             if 'salut' in account_path and connection.connected:
                 best_connection = account_path, connection.connection
             elif 'gabble' in account_path and connection.connected:
@@ -109,7 +117,8 @@ class ConnectionManager(object):
         return self._connections_per_account
 
     def get_account_for_connection(self, connection_path):
-        for account_path, connection in self._connections_per_account.items():
+        for account_path, connection in list(
+                self._connections_per_account.items()):
             if connection.connection.object_path == connection_path:
                 return account_path
         return None

@@ -26,27 +26,41 @@ from functools import partial
 
 import dbus
 from dbus import PROPERTIES_IFACE
-import gobject
-from telepathy.client import Channel
-from telepathy.interfaces import (CHANNEL,
-                                  CHANNEL_INTERFACE_GROUP,
-                                  CHANNEL_TYPE_TUBES,
-                                  CHANNEL_TYPE_TEXT,
-                                  CONNECTION,
-                                  PROPERTIES_INTERFACE)
-from telepathy.constants import (CHANNEL_GROUP_FLAG_CHANNEL_SPECIFIC_HANDLES,
-                                 HANDLE_TYPE_ROOM,
-                                 HANDLE_TYPE_CONTACT,
-                                 PROPERTY_FLAG_WRITE)
+from gi.repository import GObject
 
+from gi.repository import TelepathyGLib
 
+# from telepathy.interfaces import (CHANNEL,
+#                                  CHANNEL_INTERFACE_GROUP,
+#                                  CHANNEL_TYPE_TUBES,
+#                                  CHANNEL_TYPE_TEXT,
+#                                  CONNECTION,
+#                                  PROPERTIES_INTERFACE)
+# from telepathy.constants import (CHANNEL_GROUP_FLAG_CHANNEL_SPECIFIC_HANDLES,
+#                                 HANDLE_TYPE_ROOM,
+#                                 HANDLE_TYPE_CONTACT,
+#
+
+CHANNEL = TelepathyGLib.IFACE_CHANNEL
+CHANNEL_INTERFACE_GROUP = TelepathyGLib.IFACE_CHANNEL_INTERFACE_GROUP
+CHANNEL_TYPE_TEXT = TelepathyGLib.IFACE_CHANNEL_TYPE_TEXT
+CHANNEL_TYPE_TUBES = TelepathyGLib.IFACE_CHANNEL_TYPE_TUBES
+CONNECTION = TelepathyGLib.IFACE_CONNECTION
+PROPERTIES_INTERFACE = TelepathyGLib.PROP_CONNECTION_INTERFACES
+CHANNEL_GROUP_FLAG_CHANNEL_SPECIFIC_HANDLES = \
+    TelepathyGLib.ChannelGroupFlags.CHANNEL_SPECIFIC_HANDLES
+CHANNEL_TEXT_MESSAGE_TYPE_NORMAL = TelepathyGLib.ChannelTextMessageType.NORMAL
+HANDLE_TYPE_ROOM = TelepathyGLib.HandleType.ROOM
+HANDLE_TYPE_CONTACT = TelepathyGLib.HandleType.CONTACT
+CONN_INTERFACE_ALIASING = TelepathyGLib.IFACE_CONNECTION_INTERFACE_ALIASING
+PROPERTY_FLAG_WRITE = TelepathyGLib.PropertyFlags.WRITE
 CONN_INTERFACE_ACTIVITY_PROPERTIES = 'org.laptop.Telepathy.ActivityProperties'
 CONN_INTERFACE_BUDDY_INFO = 'org.laptop.Telepathy.BuddyInfo'
 
-_logger = logging.getLogger('sugar.presence.activity')
+_logger = logging.getLogger('sugar3.presence.activity')
 
 
-class Activity(gobject.GObject):
+class Activity(GObject.GObject):
     """UI interface for an Activity in the presence service
 
     Activities in the presence service represent your and other user's
@@ -60,24 +74,24 @@ class Activity(gobject.GObject):
         joined
     """
     __gsignals__ = {
-        'buddy-joined': (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE,
-                         ([gobject.TYPE_PYOBJECT])),
-        'buddy-left': (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE,
-                       ([gobject.TYPE_PYOBJECT])),
-        'new-channel': (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE,
-                        ([gobject.TYPE_PYOBJECT])),
-        'joined': (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE,
-                   ([gobject.TYPE_PYOBJECT, gobject.TYPE_PYOBJECT])),
+        'buddy-joined': (GObject.SignalFlags.RUN_FIRST, None,
+                         ([GObject.TYPE_PYOBJECT])),
+        'buddy-left': (GObject.SignalFlags.RUN_FIRST, None,
+                       ([GObject.TYPE_PYOBJECT])),
+        'new-channel': (GObject.SignalFlags.RUN_FIRST, None,
+                        ([GObject.TYPE_PYOBJECT])),
+        'joined': (GObject.SignalFlags.RUN_FIRST, None,
+                   ([GObject.TYPE_PYOBJECT, GObject.TYPE_PYOBJECT])),
     }
 
     __gproperties__ = {
-        'id': (str, None, None, None, gobject.PARAM_READABLE),
-        'name': (str, None, None, None, gobject.PARAM_READWRITE),
-        'tags': (str, None, None, None, gobject.PARAM_READWRITE),
-        'color': (str, None, None, None, gobject.PARAM_READWRITE),
-        'type': (str, None, None, None, gobject.PARAM_READABLE),
-        'private': (bool, None, None, True, gobject.PARAM_READWRITE),
-        'joined': (bool, None, None, False, gobject.PARAM_READABLE),
+        'id': (str, None, None, None, GObject.ParamFlags.READABLE),
+        'name': (str, None, None, None, GObject.ParamFlags.READWRITE),
+        'tags': (str, None, None, None, GObject.ParamFlags.READWRITE),
+        'color': (str, None, None, None, GObject.ParamFlags.READWRITE),
+        'type': (str, None, None, None, GObject.ParamFlags.READABLE),
+        'private': (bool, None, None, True, GObject.ParamFlags.READWRITE),
+        'joined': (bool, None, None, False, GObject.ParamFlags.READABLE),
     }
 
     def __init__(self, account_path, connection, room_handle=None,
@@ -88,7 +102,7 @@ class Activity(gobject.GObject):
         if properties is None:
             properties = {}
 
-        gobject.GObject.__init__(self)
+        GObject.GObject.__init__(self)
 
         self._account_path = account_path
         self.telepathy_conn = connection
@@ -110,7 +124,7 @@ class Activity(gobject.GObject):
         self._buddies = {}
 
         self._get_properties_call = None
-        if not self.room_handle is None:
+        if self.room_handle is not None:
             self._start_tracking_properties()
 
     def _start_tracking_properties(self):
@@ -134,16 +148,16 @@ class Activity(gobject.GObject):
             dbus_interface=CONN_INTERFACE_ACTIVITY_PROPERTIES)
 
     def __activity_properties_changed_cb(self, room_handle, properties):
-        print('%r: Activity properties changed to %r', self, properties)
+        print(('%r: Activity properties changed to %r', self, properties))
         self._update_properties(properties)
 
     def __got_properties_cb(self, properties):
-        print('__got_properties_cb %r', properties)
+        print(('__got_properties_cb %r', properties))
         self._get_properties_call = None
         self._update_properties(properties)
 
     def __error_handler_cb(self, error):
-        print('__error_handler_cb %r', error)
+        print(('__error_handler_cb %r', error))
 
     def _update_properties(self, new_props):
         val = new_props.get('name', self._name)
@@ -182,8 +196,8 @@ class Activity(gobject.GObject):
             return self._joined
 
         if self._get_properties_call is not None:
-            print('%r: Blocking on GetProperties() because someone '
-                  'wants property %s', self, pspec.name)
+            print(('%r: Blocking on GetProperties() because someone '
+                   'wants property %s', self, pspec.name))
             self._get_properties_call.block()
 
         if pspec.name == 'id':
@@ -218,7 +232,7 @@ class Activity(gobject.GObject):
         self._publish_properties()
 
     def set_private(self, val, reply_handler, error_handler):
-        print('set_private %r', val)
+        print(('set_private %r', val))
         self._activity.SetProperties({'private': bool(val)},
                                      reply_handler=reply_handler,
                                      error_handler=error_handler)
@@ -229,7 +243,7 @@ class Activity(gobject.GObject):
         returns list of presence Buddy objects that we can successfully
         create from the buddy object paths that PS has for this activity.
         """
-        return self._buddies.values()
+        return list(self._buddies.values())
 
     def get_buddy_by_handle(self, handle):
         """Retrieve the Buddy object given a telepathy handle.
@@ -266,7 +280,7 @@ class Activity(gobject.GObject):
         raise NotImplementedError()
 
     def __joined_cb(self, join_command, error):
-        print('%r: Join finished %r', self, error)
+        print(('%r: Join finished %r', self, error))
         if error is not None:
             self.emit('joined', error is None, str(error))
         self.telepathy_text_chan = join_command.text_channel
@@ -290,8 +304,8 @@ class Activity(gobject.GObject):
         channel.connect_to_signal('Closed', self.__text_channel_closed_cb)
 
     def __get_all_members_cb(self, members, local_pending, remote_pending):
-        print('__get_all_members_cb %r %r', members,
-              self._text_channel_group_flags)
+        print(('__get_all_members_cb %r %r', members,
+               self._text_channel_group_flags))
         if self._channel_self_handle in members:
             members.remove(self._channel_self_handle)
 
@@ -320,8 +334,8 @@ class Activity(gobject.GObject):
             get_handle_owners_cb(input_handles)
 
     def _add_initial_buddies(self, contact_ids):
-        print('__add_initial_buddies %r', contact_ids)
-        #for contact_id in contact_ids:
+        print(('__add_initial_buddies %r', contact_ids))
+        # for contact_id in contact_ids:
         #    self._buddies[contact_id] = self._get_buddy(contact_id)
         # Once we have the initial members, we can finish the join process
         self._joined = True
@@ -330,9 +344,9 @@ class Activity(gobject.GObject):
     def __text_channel_members_changed_cb(self, message, added, removed,
                                           local_pending, remote_pending,
                                           actor, reason):
-        print('__text_channel_members_changed_cb %r',
-              [added, message, added, removed, local_pending,
-               remote_pending, actor, reason])
+        print(('__text_channel_members_changed_cb %r',
+               [added, message, added, removed, local_pending,
+                remote_pending, actor, reason]))
         if self._channel_self_handle in added:
             added.remove(self._channel_self_handle)
         if added:
@@ -359,9 +373,9 @@ class Activity(gobject.GObject):
 
     def _get_buddy(self, contact_id):
         return None
-        #if contact_id in self._buddies:
+        # if contact_id in self._buddies:
         #    return self._buddies[contact_id]
-        #else:
+        # else:
         #    return Buddy(self._account_path, contact_id)
 
     def join(self):
@@ -376,7 +390,7 @@ class Activity(gobject.GObject):
             self.emit('joined', True, None)
             return
 
-        print('%r: joining', self)
+        print(('%r: joining', self))
 
         self._join_command = _JoinCommand(self.telepathy_conn,
                                           self.room_handle)
@@ -384,7 +398,7 @@ class Activity(gobject.GObject):
         self._join_command.run()
 
     def share(self, share_activity_cb, share_activity_error_cb):
-        if not self.room_handle is None:
+        if self.room_handle is not None:
             raise ValueError('Already have a room handle')
 
         self._share_command = _ShareCommand(self.telepathy_conn, self._id)
@@ -396,9 +410,9 @@ class Activity(gobject.GObject):
 
     def __shared_cb(self, share_activity_cb, share_activity_error_cb,
                     share_command, error):
-        print('%r: Share finished %r', self, error)
+        print(('%r: Share finished %r', self, error))
         if error is None:
-            print "There was no error!"
+            print("There was no error!")
             self._joined = True
             self.room_handle = share_command.room_handle
             self.telepathy_text_chan = share_command.text_channel
@@ -412,7 +426,7 @@ class Activity(gobject.GObject):
             self._start_tracking_channel()
             share_activity_cb(self)
         else:
-            print("error = %s" % error)
+            print(("error = %s" % error))
             share_activity_error_cb(self, error)
 
     def _publish_properties(self):
@@ -455,8 +469,8 @@ class Activity(gobject.GObject):
         channels = [self.telepathy_text_chan.object_path,
                     self.telepathy_tubes_chan.object_path]
 
-        print('%r: bus name is %s, connection is %s, channels are %r',
-              self, bus_name, connection_path, channels)
+        print(('%r: bus name is %s, connection is %s, channels are %r',
+               self, bus_name, connection_path, channels))
         return bus_name, connection_path, channels
 
     # Leaving
@@ -466,18 +480,18 @@ class Activity(gobject.GObject):
 
     def leave(self):
         """Leave this shared activity"""
-        print('%r: leaving', self)
+        print(('%r: leaving', self))
         self.telepathy_text_chan.Close()
 
 
-class _BaseCommand(gobject.GObject):
+class _BaseCommand(GObject.GObject):
     __gsignals__ = {
-        'finished': (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE,
+        'finished': (GObject.SignalFlags.RUN_FIRST, None,
                      ([object])),
     }
 
     def __init__(self):
-        gobject.GObject.__init__(self)
+        GObject.GObject.__init__(self)
 
         self.text_channel = None
         self.text_channel_group_flags = None
@@ -490,6 +504,7 @@ class _BaseCommand(gobject.GObject):
 
 
 class _ShareCommand(_BaseCommand):
+
     def __init__(self, connection, activity_id):
         _BaseCommand.__init__(self)
 
@@ -515,7 +530,7 @@ class _ShareCommand(_BaseCommand):
         self._join_command.run()
 
     def __joined_cb(self, join_command, error):
-        print('%r: Join finished %r', self, error)
+        print(('%r: Join finished %r', self, error))
         if error is not None:
             self._finished = True
             self.emit('finished', error)
@@ -542,6 +557,7 @@ class _ShareCommand(_BaseCommand):
 
 
 class _JoinCommand(_BaseCommand):
+
     def __init__(self, connection, room_handle):
         _BaseCommand.__init__(self)
 
@@ -580,27 +596,31 @@ class _JoinCommand(_BaseCommand):
             dbus_interface=CONNECTION)
 
     def __create_text_channel_cb(self, channel_path):
-        Channel(self._connection.requested_bus_name, channel_path,
-                ready_handler=self.__text_channel_ready_cb)
+        TelepathyGLib.SimpleClientFactory.ensure_channel(
+            self._connection.requested_bus_name,
+            channel_path,
+            ready_handler=self.__text_channel_ready_cb)
 
     def __create_tubes_channel_cb(self, channel_path):
-        print("Creating tubes channel with bus name %s" %
-              (self._connection.requested_bus_name))
-        print("Creating tubes channel with channel path %s" % (channel_path))
-        Channel(self._connection.requested_bus_name, channel_path,
-                ready_handler=self.__tubes_channel_ready_cb)
+        print(("Creating tubes channel with bus name %s" %
+               self._connection.requested_bus_name))
+        print(("Creating tubes channel with channel path %s" % channel_path))
+        TelepathyGLib.SimpleClientFactory.ensure_channel(
+            self._connection.requested_bus_name,
+            channel_path,
+            ready_handler=self.__tubes_channel_ready_cb)
 
     def __error_handler_cb(self, error):
         self._finished = True
         self.emit('finished', error)
 
     def __tubes_channel_ready_cb(self, channel):
-        print('%r: Tubes channel %r is ready', self, channel)
+        print(('%r: Tubes channel %r is ready', self, channel))
         self.tubes_channel = channel
         self._tubes_ready()
 
     def __text_channel_ready_cb(self, channel):
-        print('%r: Text channel %r is ready', self, channel)
+        print(('%r: Text channel %r is ready', self, channel))
         self.text_channel = channel
         self._tubes_ready()
 
@@ -609,13 +629,13 @@ class _JoinCommand(_BaseCommand):
                 self.tubes_channel is None:
             return
 
-        print('%r: finished setting up tubes', self)
+        print(('%r: finished setting up tubes', self))
 
         self._add_self_to_channel()
 
     def __text_channel_group_flags_changed_cb(self, added, removed):
-        print('__text_channel_group_flags_changed_cb %r %r', added,
-              removed)
+        print(('__text_channel_group_flags_changed_cb %r %r', added,
+               removed))
         self.text_channel_group_flags |= added
         self.text_channel_group_flags &= ~removed
 
@@ -626,9 +646,9 @@ class _JoinCommand(_BaseCommand):
         group = self.text_channel[CHANNEL_INTERFACE_GROUP]
 
         def got_all_members(members, local_pending, remote_pending):
-            print('got_all_members members %r local_pending %r '
-                  'remote_pending %r', members, local_pending,
-                  remote_pending)
+            print(('got_all_members members %r local_pending %r '
+                   'remote_pending %r', members, local_pending,
+                   remote_pending))
 
             if self.text_channel_group_flags & \
                     CHANNEL_GROUP_FLAG_CHANNEL_SPECIFIC_HANDLES:
@@ -637,7 +657,7 @@ class _JoinCommand(_BaseCommand):
                 self_handle = self._global_self_handle
 
             if self_handle in local_pending:
-                print('%r: We are in local pending - entering', self)
+                print(('%r: We are in local pending - entering', self))
                 group.AddMembers(
                     [self_handle],
                     '',
@@ -673,10 +693,10 @@ class _JoinCommand(_BaseCommand):
     def __text_channel_members_changed_cb(self, message, added, removed,
                                           local_pending, remote_pending,
                                           actor, reason):
-        print('__text_channel_members_changed_cb added %r removed %r '
-              'local_pending %r remote_pending %r channel_self_handle '
-              '%r', added, removed, local_pending, remote_pending,
-              self.channel_self_handle)
+        print(('__text_channel_members_changed_cb added %r removed %r '
+               'local_pending %r remote_pending %r channel_self_handle '
+               '%r', added, removed, local_pending, remote_pending,
+               self.channel_self_handle))
 
         if self.text_channel_group_flags & \
                 CHANNEL_GROUP_FLAG_CHANNEL_SPECIFIC_HANDLES:
