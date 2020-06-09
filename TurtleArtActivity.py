@@ -28,8 +28,8 @@ gi.require_version('Gdk', '3.0')
 from gi.repository import Gtk
 from gi.repository import Gdk
 from gi.repository import GdkPixbuf
+from gi.repository import GLib
 import cairo
-import gobject
 import dbus
 
 import logging
@@ -230,7 +230,7 @@ class TurtleArtActivity(activity.Activity):
         dsobject.destroy()
 
         os.remove(logo_code_path)
-        gobject.timeout_add(250, self.save_as_logo.set_icon, 'logo-saveoff')
+        GLib.timeout_add(250, self.save_as_logo.set_icon, 'logo-saveoff')
         self._notify_successful_save(title=_('Save as Logo'))
 
     def do_load_ta_project_cb(self, button, new=False):
@@ -279,7 +279,7 @@ class TurtleArtActivity(activity.Activity):
         ''' Load Python code from the Journal. '''
         self.load_python.set_icon('pippy-openon')
         self.tw.load_python_code_from_file(fname=None, add_new_block=True)
-        gobject.timeout_add(250, self.load_python.set_icon, 'pippy-openoff')
+        GLib.timeout_add(250, self.load_python.set_icon, 'pippy-openoff')
 
     def do_save_as_image_cb(self, button):
         ''' Save the canvas to the Journal. '''
@@ -287,7 +287,7 @@ class TurtleArtActivity(activity.Activity):
         _logger.debug('saving image to journal')
 
         self.tw.save_as_image()
-        gobject.timeout_add(250, self.save_as_image.set_icon, 'image-saveoff')
+        GLib.timeout_add(250, self.save_as_image.set_icon, 'image-saveoff')
         self._notify_successful_save(title=_('Save as image'))
 
     def do_keep_cb(self, button):
@@ -392,7 +392,7 @@ class TurtleArtActivity(activity.Activity):
         self.recenter()
         self.tw.eraser_button()
         self.restore_challenge()
-        gobject.timeout_add(250, self.eraser_button.set_icon, 'eraseron')
+        GLib.timeout_add(250, self.eraser_button.set_icon, 'eraseron')
 
     def restore_challenge(self):
         ''' Restore the current challange after a clear screen '''
@@ -1194,7 +1194,7 @@ class TurtleArtActivity(activity.Activity):
         self.hadj_value = self.sw.get_hadjustment().get_value()
         self.vadj_value = self.sw.get_vadjustment().get_value()
         if not self._defer_palette_move:
-            gobject.idle_add(self.adjust_palette)
+            GLib.idle_add(self.adjust_palette)
 
     def _setup_canvas(self, canvas_window):
         ''' Initialize the turtle art canvas. '''
@@ -1446,7 +1446,7 @@ in order to use the plugin.'))
                     if not plugin:
                         turtle_code = os.path.join(tmp_dir, 'ta_code.ta')
                         if os.path.exists(turtle_code):
-                            gobject.idle_add(self._project_loader, turtle_code)
+                            GLib.idle_add(self._project_loader, turtle_code)
                     else:
                         _logger.debug('load a plugin from %s' % (tmp_dir))
                         self._load_a_plugin(tmp_dir)
@@ -1465,7 +1465,7 @@ in order to use the plugin.'))
 
             # ...otherwise, assume it is a .ta file.
             else:
-                gobject.idle_add(self._project_loader, file_path)
+                GLib.idle_add(self._project_loader, file_path)
 
         else:
             _logger.debug('Deferring reading file %s' % (file_path))

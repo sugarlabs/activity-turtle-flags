@@ -24,7 +24,7 @@
 from gi.repository import Gtk
 from gi.repository import Gdk
 from gi.repository import GdkPixbuf
-import gobject
+from gi.repository import GLib
 import cairo
 
 import getopt
@@ -190,7 +190,7 @@ return %s(self)" % (p, P, P)
             self.tw.load_start()
         else:
             self.win.get_window().set_cursor(Gdk.Cursor.new(Gdk.CursorType.WATCH))
-            gobject.idle_add(self._project_loader, self._ta_file)
+            GLib.idle_add(self._project_loader, self._ta_file)
         self._set_gconf_overrides()
         Gtk.main()
 
