@@ -291,7 +291,7 @@ return %s(self)" % (p, P, P)
             opts, args = getopt.getopt(argv[1:], 'hor',
                                        ['help', 'output_png', 'run'])
         except getopt.GetoptError as err:
-            print(str(err))
+            print(err.msg)
             print(self._HELP_MSG)
             sys.exit(2)
         self._run_on_launch = False
