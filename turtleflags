@@ -18,7 +18,6 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 import os
-import string
 import sys
 
 argv = sys.argv[:]
@@ -29,7 +28,7 @@ TAPATH = '/usr/share/sugar/activities/TurtleArt.activity'
 
 if len(argv) > 1:
     argv = argv[1:]
-    params = string.join(argv, ' ')
+    params = ' '.join(argv)
     os.system(os.path.join(TAPATH, 'turtleflags.py') + ' ' + params)
 else:
     os.system(os.path.join(TAPATH, 'turtleflags.py'))
