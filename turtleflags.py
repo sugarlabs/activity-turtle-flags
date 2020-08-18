@@ -133,8 +133,12 @@ class TurtleMain():
         compiled = os.path.join(path, 'gschemas.compiled')
         if not os.access(compiled, os.R_OK):
             src = '%s.gschema.xml' % self._GIO_SETTINGS
-            lines = open(os.path.join(activity_root, src), 'r').readlines()
-            open(os.path.join(path, src), 'w').writelines(lines)
+            read_file = open(os.path.join(activity_root, src), 'r')
+            lines = read_file.readlines()
+            write_file = open(os.path.join(path, src), 'w')
+            write_file.writelines(lines)
+            write_file.close()
+            read_file.close()
             os.system('glib-compile-schemas %s' % path)
             os.remove(os.path.join(path, src))
 
